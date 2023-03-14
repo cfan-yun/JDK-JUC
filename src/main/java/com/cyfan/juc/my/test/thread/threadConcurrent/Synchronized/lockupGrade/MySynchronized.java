@@ -29,7 +29,7 @@ public class MySynchronized {
     /**
      * 加锁入口
      */
-    private void monitorEnter() {
+    public void monitorEnter() {
 
         /**
          * 锁升级后续实现
@@ -46,7 +46,7 @@ public class MySynchronized {
     /**
      * 释放锁入口
      */
-    private void monitorExists() {
+    public  void monitorExit() {
         MarkWork markWork = myLock.getMarkWork();
         String biasedLock = markWork.getBiasedLock();
         String lockFlag = markWork.getFlag();
@@ -118,8 +118,6 @@ public class MySynchronized {
                 return;
             }
 
-        }else{
-            //TODO 撤销偏向锁
         }
         //走轻量级锁模式
         slowEnter();

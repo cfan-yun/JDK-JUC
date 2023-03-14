@@ -9,6 +9,11 @@ import java.lang.reflect.Field;
  */
 public class BiasedLocking {
 
+    /**
+     * 偏向锁加锁
+     * @param myLock
+     * @return
+     */
     public boolean revokeAndRebias(MyLock myLock) {
         MarkWork markWork = myLock.getMarkWork();
         long threadID = markWork.getThreadID();// 线程ID
