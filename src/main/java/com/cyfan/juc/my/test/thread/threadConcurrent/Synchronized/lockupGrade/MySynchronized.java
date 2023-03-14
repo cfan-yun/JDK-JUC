@@ -14,24 +14,21 @@ public class MySynchronized {
     static ThreadLocal<LockRecord> threadLocal = new ThreadLocal() {//当前线程中，存一份markWork和owner
         @Override
         protected LockRecord initialValue() {
-            MarkWork markWork = myLock.getMarkWork();
+           // MarkWork markWork = myLock.getMarkWork();
             MarkWork owner = null;
+            MarkWork markWorkClone = null;
+            //markWorkClone = (MarkWork) markWork.clone();
 
             LockRecord lockRecord = new LockRecord();
-
-            MarkWork markWorkClone = null;
-            try {
-                markWorkClone = (MarkWork) markWork.clone();
-
-            } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
-            }
             lockRecord.setOwner(owner);
             lockRecord.setMarkWork(markWorkClone);
             return lockRecord;
         }
     };
 
+    /**
+     * 加锁入口
+     */
     private void monitorEnter() {
 
         /**
@@ -45,6 +42,71 @@ public class MySynchronized {
         }
 
     }
+
+    /**
+     * 释放锁入口
+     */
+    private void monitorExists() {
+        MarkWork markWork = myLock.getMarkWork();
+        String biasedLock = markWork.getBiasedLock();
+        String lockFlag = markWork.getFlag();
+        long biasedThreadID = markWork.getThreadID();
+        long currentThreadID = Thread.currentThread().getId();
+        // 1.判断是否偏向锁，并释放偏向锁
+        if ((biasedLock != null && "1".equals(biasedLock)) && (lockFlag != null && "01".equals(lockFlag))){
+             if(biasedThreadID != currentThreadID){ //释放锁的线程和当前线程不是一个线程，那么应抛出异常
+                 throw new RuntimeException("释放偏向锁异常,不是锁的拥有者无权释放该锁！");
+             }
+             return;
+        }
+        // 2.轻量级锁和重量级锁的释放
+        else{
+            slowExit(markWork);
+        }
+
+
+    }
+
+    /**
+     * 轻量级锁和重量级锁的释放
+     */
+    private void slowExit(MarkWork markWork) {
+        fastExit(markWork);
+    }
+
+    /**
+     * 轻量级锁的释放
+     */
+    private void fastExit(MarkWork markWork) {
+        //需要将markWord还原：markWord替换（cas） lockFlag 撤销 (01)
+        LockRecord lockRecord = threadLocal.get(); //当前栈帧中的lockRecord
+        LockRecord ptrLockRecord = markWork.getPtrLockRecord(); // 持有轻量级锁线程的对象头
+        MarkWork head = lockRecord.getMarkWork();   //当前栈帧中的lockRecord中的head
+        if (head != null ){//当前线程持有的是轻量级锁
+            Unsafe unsafe = MyUnsafe.getUnsafe();
+            Field markWorkField = null;//当前线程持有的对象头
+            try {
+                markWorkField = myLock.getClass().getDeclaredField("markWork");
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+            long offset = unsafe.objectFieldOffset(markWorkField);//地址偏移量
+            Object currentMarkWorkField = unsafe.getObjectVolatile(myLock, offset);//获取原值
+            boolean isOk = unsafe.compareAndSwapObject(myLock, offset, currentMarkWorkField, head);//比较当前值和原值是否相等，等修改为lockRecord.head
+            //cas修改成功，释放轻量级锁
+            if (isOk){
+                lockRecord.setMarkWork(null);
+                lockRecord.setOwner(null);
+                markWork.setFlag("01");
+                return;
+            }
+            //修改失败，轻量级膨胀，膨胀为重量级锁之后退出
+            inflateExit();
+        }
+
+
+    }
+
 
     /**
      * 偏锁锁加锁流程
@@ -94,6 +156,8 @@ public class MySynchronized {
             boolean isOK = unsafe.compareAndSwapObject(markWork, offset, currentLockRecord, lockRecord);
             if (isOK) {
                 markWork.setFlag("00"); //设值为轻量级锁标志
+                MarkWork markWorkClone = (MarkWork) markWork.clone();
+                lockRecord.setMarkWork(markWorkClone); //head
                 lockRecord.setOwner(markWork); //owner 指向当前线程的markWord
                 return;
             }
@@ -117,12 +181,26 @@ public class MySynchronized {
         inflateEnter();
     }
 
+    /**
+     * 锁膨胀过程
+     */
     private void inflateEnter() {
         //锁膨胀，膨胀的结果是生成ObjectMonitor对象
         ObjectMonitor objectMonitor = inflate();
         //进入锁
         objectMonitor.enter(myLock);
     }
+    /**
+     * 轻量级锁膨胀
+     */
+    private void inflateExit() {
+        //轻量级锁膨胀为重量级锁
+        ObjectMonitor objectMonitor = inflate();
+        //重量级锁退出
+        objectMonitor.exit(myLock);
+
+    }
+
 
     /**
      * 膨胀过程只是轻量级锁膨胀为重量级锁
@@ -178,8 +256,4 @@ public class MySynchronized {
 
     }
 
-
-    private void monitorExists() {
-
-    }
 }

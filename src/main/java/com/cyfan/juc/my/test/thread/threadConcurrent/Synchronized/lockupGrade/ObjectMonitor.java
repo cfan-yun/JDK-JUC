@@ -33,9 +33,67 @@ public class ObjectMonitor {
             return;
         }
         //3.从轻量级锁膨胀来的。
+        LockRecord lockRecord = MySynchronized.threadLocal.get();
+        if (lockRecord.getMarkWork() != null){
+            recursions = 1;
+            this.owner = Thread.currentThread();
+            return;
+        }
+
         //4.预备入队挂起
         enterI(myLock);
     }
+
+    /**
+     * 重量级锁的退出
+     */
+    public void exit(MyLock myLock) {
+        Thread thread = Thread.currentThread();
+        if (thread != this.owner){//轻量级锁膨胀来的
+            //获取当前线程栈帧中的轻量级锁对象
+            LockRecord lockRecord = MySynchronized.threadLocal.get();
+            //获取轻量级锁对象中拷贝的对象头信息
+            MarkWork head = lockRecord.getMarkWork();
+            if (head != null){//不为空，说明是轻量级锁升级之后释放，将owner设置为当前对象
+                owner = thread;
+                recursions = 0;
+            }else{
+                throw new RuntimeException("不是锁的拥有者无权释放该锁！");
+            }
+        }
+
+        //如果是重入锁退出， recursions--;
+        if (recursions != 0){
+            recursions--;
+
+        }
+
+        //开始选择唤醒模式
+        MyUnsafe.getUnsafe();//触发屏障 ，对应c++中的fence屏障触发
+        //从队列里面获取一个线程准备唤醒
+        ObjectWaiter objectWaiter = (ObjectWaiter) cxq.poll();
+        if (objectWaiter != null){//不为空时，代表获取cxq队列中对象成功，才能继续往下执行
+            editEpilog(myLock, objectWaiter);
+        }
+
+
+    }
+
+    /**
+     * 唤醒线程
+     * 唤醒后owner 置为空
+     */
+    private void editEpilog(MyLock myLock, ObjectWaiter objectWaiter) {
+        //丢弃锁，将onwer置为null
+        MarkWork markWork = myLock.getMarkWork();
+        markWork.getPtrMonitor().setOwner(null);
+        //获取线程唤醒
+        Thread thread = objectWaiter.getThread();
+        MyUnsafe.getUnsafe().unpark(thread);// 唤醒线程
+        markWork.setPtrMonitor(null);
+        objectWaiter = null;
+    }
+
 
     /**
      * cas 操作修改owner对象指针
@@ -45,7 +103,7 @@ public class ObjectMonitor {
      * @throws NoSuchFieldException
      */
     private Thread cmpAndChange(MyLock myLock) {
-        ObjectMonitor objectMonitor = myLock.getMarkWork().getPreMonitor();
+        ObjectMonitor objectMonitor = myLock.getMarkWork().getPtrMonitor();
         Field owner = null;
         try {
             owner = objectMonitor.getClass().getDeclaredField("owner");
@@ -63,6 +121,11 @@ public class ObjectMonitor {
         return currentOwner;//修改失败返回当前线程
     }
 
+    /**
+     * 真正的挂起操作
+     *
+     * @param myLock
+     */
     private void enterI(MyLock myLock) {
         //1.自旋抢锁
         if (tryLock(myLock)>0) {
@@ -182,4 +245,5 @@ public class ObjectMonitor {
     public void setEntryList(LinkedBlockingQueue entryList) {
         this.entryList = entryList;
     }
+
 }

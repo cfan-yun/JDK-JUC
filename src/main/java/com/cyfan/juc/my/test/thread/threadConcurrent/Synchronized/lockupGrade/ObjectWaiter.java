@@ -1,5 +1,8 @@
 package com.cyfan.juc.my.test.thread.threadConcurrent.Synchronized.lockupGrade;
 
+/**
+ * ObjectMonitor 锁住的线程封装为ObjectWaiter对象，入cxq队列
+ */
 public class ObjectWaiter {
     private Thread thread;
 

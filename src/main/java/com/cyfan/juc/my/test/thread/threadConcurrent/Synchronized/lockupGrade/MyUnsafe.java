@@ -4,6 +4,9 @@ import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
+/**
+ * 获取Unsafe对象，操作内存
+ */
 public class MyUnsafe {
 
     public static Unsafe getUnsafe() {

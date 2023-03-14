@@ -4,11 +4,14 @@ import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
+/**
+ * 偏向锁对象
+ */
 public class BiasedLocking {
 
     public boolean revokeAndRebias(MyLock myLock) {
         MarkWork markWork = myLock.getMarkWork();
-        long threadID = markWork.getThreadID();
+        long threadID = markWork.getThreadID();// 线程ID
 
         //获取偏向锁
         String biasedLock = markWork.getBiasedLock();//获取偏向锁标记

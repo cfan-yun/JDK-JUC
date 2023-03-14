@@ -1,5 +1,9 @@
 package com.cyfan.juc.my.test.thread.threadConcurrent.Synchronized.lockupGrade;
 
+/**
+ * 自定义锁。
+ * markWork为对象头
+ */
 public class MyLock {
     private MarkWork markWork;
 
