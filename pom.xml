@@ -33,6 +33,13 @@
             <artifactId>jmh-core</artifactId>
             <version>1.27</version>
         </dependency>
+        <!--jol工具查看内存状态-->
+        <dependency>
+            <groupId>org.openjdk.jol</groupId>
+            <artifactId>jol-core</artifactId>
+            <version>0.10</version>
+        </dependency>
+
 
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
