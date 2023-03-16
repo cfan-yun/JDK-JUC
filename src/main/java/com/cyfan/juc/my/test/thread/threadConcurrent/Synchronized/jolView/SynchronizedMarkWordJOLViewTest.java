@@ -14,7 +14,7 @@ import org.openjdk.jol.vm.VM;
  *         </dependency>
  *
  */
-public class JOLViewTest {
+public class SynchronizedMarkWordJOLViewTest {
     static LockObject noLockObj = new LockObject();
     static LockObject biasedLockObj = new LockObject();
     static LockObject fastLockObj = new LockObject();
@@ -215,7 +215,7 @@ public class JOLViewTest {
         };
         Thread thread = new Thread(runnable);
         thread.start();
-        Thread.sleep(1000);//休眠一秒确保等待thread线程加锁
+        Thread.sleep(1000);//休眠一秒确保等待thread线程加锁，并且thread线程没有执行完成
         System.out.println(">>>>>>>>>>>>>>"+thread.getName()+",加锁中.......");
         System.out.println(ClassLayout.parseInstance(slowLockObj).toPrintable()); //打印lockObject 的内存布局
 
