@@ -9,6 +9,8 @@ import com.cyfan.juc.my.test.thread.uilt.Sleep;
  * join的本质是调用了wait方法，wait阻塞的是是启动t1线程的的父线程
  *1.join 方法中，父线程调用了wait方法阻塞，一直等待，那么唤醒操作是再什么时候唤醒的？？？？？
  *      JoinTest1 解答
+ *      Thread.join ->Object.wait -> object.c -> JVM_MonitorWait -> jvm.cpp -> JVM_MonitorWait ->  ObjectSynchronizer::wait
+ *      -> ObjectSynchronizer::inflate ->　 monitor->wait　-> waitSet队列
  *
  *
  *

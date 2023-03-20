@@ -1,7 +1,5 @@
 package com.cyfan.juc.my.test.thread.threadCommunication;
 
-import com.cyfan.juc.my.test.thread.threadConcurrent.Synchronized.myLock.Test;
-import com.cyfan.juc.my.test.thread.uilt.Sleep;
 
 /**
  *
@@ -13,6 +11,8 @@ import com.cyfan.juc.my.test.thread.uilt.Sleep;
  *  1.1.猜测线程结束时，会去唤醒其他线程
  *   验证：thread.cpp -> thread::exit -> ensure_join(this) -> ObjectLocker 构造函数加锁->  lock.notify_all(thread) ->ObjectLocker　析构函数解锁
  *   在t1 线程退出的时候，对其他线程进行了唤醒操作。
+ *
+ * thread1.join -》 以thread1作为锁对象-》调用了object.wait(main 卡死)-》在线程thread1退出时，以tread1作为锁对象，加锁-》 调用notifyAll唤醒 -》解锁
  *
  *
  */
