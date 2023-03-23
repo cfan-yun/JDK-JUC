@@ -1,6 +1,5 @@
 package com.cyfan.juc.my.test.threadPool;
 
-import com.cyfan.juc.my.test.threadPool.policy.MyTask;
 
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -26,10 +25,20 @@ public class ThreadPoolInit {
 
 
         //boolean b = threadPoolExecutor.prestartCoreThread();//在线程池启动的时候，就提前启动一个线程
-        int i = threadPoolExecutor.prestartAllCoreThreads();
-        System.out.println(i);
-        int activeCount = threadPoolExecutor.getActiveCount();
-        System.out.println("activeCount = " + activeCount);
+        //打印getActiveCount结果3，2，1，0均有可能， 可调小jvm内存更容易得到结果 -Xms30m -Xmx30m
+        for (;;){
+            int activeCount = threadPoolExecutor.getActiveCount();
+            System.out.println("activeCount！！ = " + activeCount);
+            int i = threadPoolExecutor.prestartAllCoreThreads();
+            System.out.println(i);
+            activeCount = threadPoolExecutor.getActiveCount();
+            if (activeCount != 0) {
+                System.out.println("activeCount = " + activeCount);
+                break;
+            }
+            System.out.println("activeCount = " + activeCount);
+        }
+
 
 
 
