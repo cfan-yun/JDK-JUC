@@ -5,6 +5,9 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * threadLocal内存泄露模拟
+ *      jvm：
+ *          -Xms50M
+ *          -Xmx50M
  *      产生原因：threadLocal和线程池一起使用时，threadLocal的entry中的value是强引用，由于线程没有结束，导致value一直回收不掉，但是弱引用Key已经被回收了。
  *          value 在gc时回收不掉，导致内存泄露OOM
  * 如何防止内存泄露？？
