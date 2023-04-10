@@ -2,7 +2,7 @@ package com.cyfan.study.a02.mycase.person;
 
 public class MutablePersonTask extends Thread{
 
-    private MutablePerson mutablePerson;
+    private final MutablePerson mutablePerson;
 
     public MutablePersonTask(MutablePerson mutablePerson){
         this.mutablePerson = mutablePerson;

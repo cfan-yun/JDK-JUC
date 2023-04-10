@@ -7,9 +7,13 @@ public class ServerInitTest {
 
     public static void main(String[] args) {
         ServerInit serverInit = new ServerInit();
-        new Thread(()->{
+        Runnable runnable = ()->{
             serverInit.init();
-        }).start();
+        };
 
+
+        for (int i = 0; i < 10; i++) {
+            new Thread(runnable).start();
+        }
     }
 }
