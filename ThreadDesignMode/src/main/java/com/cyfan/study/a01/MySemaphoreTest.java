@@ -1,7 +1,5 @@
 package com.cyfan.study.a01;
 
-import java.util.concurrent.Semaphore;
-
 /**
  * 自定义信号量量（MySemaphore），测试
  * 利用synchronized实现
