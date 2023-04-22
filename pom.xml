@@ -13,6 +13,8 @@
     <modules>
         <module>ThreadBasic</module>
         <module>ThreadDesignMode</module>
+        <module>JUC</module>
+        <module>SomeAlgorithm</module>
     </modules>
 
 
