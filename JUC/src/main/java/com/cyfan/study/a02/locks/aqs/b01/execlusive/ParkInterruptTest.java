@@ -1,4 +1,4 @@
-package com.cyfan.study.a02.locks.aqs;
+package com.cyfan.study.a02.locks.aqs.b01.execlusive;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;

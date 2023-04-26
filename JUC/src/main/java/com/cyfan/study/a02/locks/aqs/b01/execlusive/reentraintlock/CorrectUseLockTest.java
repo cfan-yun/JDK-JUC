@@ -1,4 +1,4 @@
-package com.cyfan.study.a02.locks.aqs.reentraintlock;
+package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
 
 /**
  * 1.为什么要在finally中调用 lock.unlock()??

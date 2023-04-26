@@ -1,4 +1,4 @@
-package com.cyfan.study.a02.locks.aqs.reentraintlock;
+package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
 
 import com.cyfan.study.utils.UnsafeUtils;
 import sun.misc.Unsafe;

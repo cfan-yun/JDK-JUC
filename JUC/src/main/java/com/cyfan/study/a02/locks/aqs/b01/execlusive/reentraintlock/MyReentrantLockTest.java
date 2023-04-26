@@ -1,9 +1,8 @@
-package com.cyfan.study.a02.locks.aqs.reentraintlock;
+package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 1、测试自定义重入锁正确性

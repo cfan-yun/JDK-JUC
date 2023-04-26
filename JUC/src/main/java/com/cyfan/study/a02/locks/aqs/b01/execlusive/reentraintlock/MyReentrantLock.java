@@ -1,4 +1,4 @@
-package com.cyfan.study.a02.locks.aqs.reentraintlock;
+package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
 
 import java.util.Collections;
 import java.util.List;
