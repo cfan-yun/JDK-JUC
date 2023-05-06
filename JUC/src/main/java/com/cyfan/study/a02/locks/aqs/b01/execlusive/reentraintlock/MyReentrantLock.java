@@ -1,5 +1,7 @@
 package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
 
+import com.cyfan.study.a02.locks.aqs.MyAbstractQueuedSynchronizer;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +58,7 @@ public class MyReentrantLock implements Lock {
          * @return true 获取锁成功
          */
         @Override
-        public boolean tryAcquire(int arg) {
+        protected boolean tryAcquire(int arg) {
 
             Thread currentThread = Thread.currentThread();//获取到当前线程
             int state = getState();//获取状态

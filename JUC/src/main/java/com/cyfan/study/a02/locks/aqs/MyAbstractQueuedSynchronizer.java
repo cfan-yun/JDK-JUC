@@ -1,4 +1,4 @@
-package com.cyfan.study.a02.locks.aqs.b01.execlusive.reentraintlock;
+package com.cyfan.study.a02.locks.aqs;
 
 import com.cyfan.study.utils.UnsafeUtils;
 import sun.misc.Unsafe;
@@ -19,13 +19,15 @@ public class MyAbstractQueuedSynchronizer {
     // region  Node节点 操作相关
     static class Node {
         static Node EXCLUSIVE = null; //独占模式
+        static Node SHARED = new Node();//共享模式
         Node nextWaiter; // 表示共享或者独占模式
         private volatile Thread thread;// 存储的具体对象，Node的元素值
         private volatile Node prev;// 前驱节点
         private volatile Node next;// 后继节点
         private static final int CANCEL = 1;//取消状态
-        private static final int INIT = 1;//初始化状态
+        private static final int INIT = 0;//初始化状态
         private static final int SINGLE = -1;// 可以阻塞的状态
+        private static final int PROPAGATE = -3;//仅用于共享模式下，释放锁时的队列头节点，用于向整个队列传播锁释放的信号
         private volatile int waitState; //节点状态 ，为什么要有这个状态？？？ 因为后驱节点能否被唤醒抢锁，依赖于前驱节点，通过前驱节点的状态来判断
 
         public Node() {
@@ -49,14 +51,14 @@ public class MyAbstractQueuedSynchronizer {
     private volatile Node tail;
 
 
-    protected List<Thread> getQueuedThreads() {
+    public List<Thread> getQueuedThreads() {
         ArrayList<Thread> threads = new ArrayList<>();
         for (Node t = tail; t != null; t = t.prev) {
             Thread thread = t.thread;
-//            if (thread != null) {//头节点的就不取了
+            if (thread != null) {//头节点的就不取了
                 threads.add(thread);
 
-//            }
+            }
 
         }
         return threads;
@@ -160,54 +162,6 @@ public class MyAbstractQueuedSynchronizer {
     protected boolean tryAcquire(int arg) {
         //这里需要公平锁和非公平锁来继承重写
         throw new UnsupportedOperationException("不支持该方法");
-    }
-
-    /**
-     * cas入队列
-     *
-     * @param mode 模式独占还是共享 Node.
-     * @return
-     */
-    private Node addNode(Node mode) {
-        //初始化节点
-        Node node = new Node(Thread.currentThread(), mode);// Threadx、y、z
-        //System.out.println(node.thread.getName() + ", 创建节点准备排队， tail = " + tail);
-        Node prev = tail;// 尾节点赋值给prev变量
-        if (prev != null) {//这里是一个优化，快速尝试一次，尝试不成功再去下面casEnQueue中while(true)修改
-            //System.out.println(prev);
-            node.prev = prev;
-            if (compareAndSwapTail(prev, node)) {//cas成功将tail 修改为node，即代表y尾插成功
-                prev.next = node;// prev在tail之前，现在
-                System.out.println(Thread.currentThread().getName() + " 快速尝试入队完成！");
-                return node;
-            }
-        }
-        //1.走到这里表示队列还没有初始化或者tail为空 ，队列不存在 ，if (prev != null) 判断为false
-        //2.或者cas失败（if (compareAndSwapTail(prev, node))）。说明队列存在，失败之后需要再次尝试
-        casEnQueue(node);//入队完成
-        return node;
-    }
-
-    private Node casEnQueue(Node node) {
-        while (true) {
-            Node tmpTail = tail;
-            if (tmpTail == null) { // tail 为空，队列都还没有，此时需要初始化
-                if (compareAndSwapHead(null, new Node())) { //这里为什么不用线程的Node而是要new一个空节点？？？？？？
-                    tail = head;//初始化完成。head,tail都是空节点
-                    System.out.println(node.thread.getName() + ", 队列初始化完成!" + tail);
-                    //return head;//这里 return new Node()
-                }
-
-            } else {//队列不为空，不需要初始化， 其余线程(x,z)在这里自旋入队
-                node.prev = tmpTail;
-                if (compareAndSwapTail(tmpTail, node)) {//cas成功将tail 修改为node
-                    tmpTail.next = node;// prev在tail之前，现在,node称为了新的tail
-                    System.out.println(node.thread.getName() + ", 自旋入队完成!");
-                    return node;
-                }
-            }
-        }
-
     }
 
     /**
@@ -370,7 +324,10 @@ public class MyAbstractQueuedSynchronizer {
         }
         return false;
     }
+    // endregion
 
+
+    // region 队列相关操作
     private void setHead(Node node) {
         head = node;// 设置自己为头
         node.thread = null; //头节点永远为空节点
@@ -393,7 +350,237 @@ public class MyAbstractQueuedSynchronizer {
                 );
     }
 
+    /**
+     * cas入队列
+     *
+     * @param mode 模式独占还是共享 Node.
+     * @return
+     */
+    private Node addNode(Node mode) {
+        //初始化节点
+        Node node = new Node(Thread.currentThread(), mode);// Threadx、y、z
+        //System.out.println(node.thread.getName() + ", 创建节点准备排队， tail = " + tail);
+        Node prev = tail;// 尾节点赋值给prev变量
+        if (prev != null) {//这里是一个优化，快速尝试一次，尝试不成功再去下面casEnQueue中while(true)修改
+            //System.out.println(prev);
+            node.prev = prev;
+            if (compareAndSwapTail(prev, node)) {//cas成功将tail 修改为node，即代表y尾插成功
+                prev.next = node;// prev在tail之前，现在
+                System.out.println(Thread.currentThread().getName() + " 快速尝试入队完成！");
+                return node;
+            }
+        }
+        //1.走到这里表示队列还没有初始化或者tail为空 ，队列不存在 ，if (prev != null) 判断为false
+        //2.或者cas失败（if (compareAndSwapTail(prev, node))）。说明队列存在，失败之后需要再次尝试
+        casEnQueue(node);//入队完成
+        return node;
+    }
+
+    private Node casEnQueue(Node node) {
+        while (true) {
+            Node tmpTail = tail;
+            if (tmpTail == null) { // tail 为空，队列都还没有，此时需要初始化
+                if (compareAndSwapHead(null, new Node())) { //这里为什么不用线程的Node而是要new一个空节点？？？？？？
+                    tail = head;//初始化完成。head,tail都是空节点
+                    System.out.println(node.thread.getName() + ", 队列初始化完成!" + tail);
+                    //return head;//这里 return new Node()
+                }
+
+            } else {//队列不为空，不需要初始化， 其余线程(x,z)在这里自旋入队
+                node.prev = tmpTail;
+                if (compareAndSwapTail(tmpTail, node)) {//cas成功将tail 修改为node
+                    tmpTail.next = node;// prev在tail之前，现在,node称为了新的tail
+                    System.out.println(node.thread.getName() + ", 自旋入队完成!");
+                    return node;
+                }
+            }
+        }
+
+    }
     // endregion
+
+
+    // region 共享锁相关操作
+
+    /**
+     * 共享锁获取锁（响应中断）
+     * @param arg 令牌数
+     * @throws InterruptedException 中断
+     */
+    public void acquireSharedInterruptibly(int arg) throws InterruptedException {
+        // 独占锁公平锁逻辑
+        //if (!tryAcquire(arg) && acquireQueue(addNode(Node.EXCLUSIVE), arg)) {
+        if (Thread.interrupted()){
+            throw new InterruptedException();
+        }
+        //1.快速尝试获取锁 2.获取锁失败（1.入队 2.自旋阻塞）
+        if(tryAcquireShared(arg) < 0){
+            doAcquireSharedInterruptibly(arg);
+        }
+    }
+
+    /**
+     * 共享锁获取锁（不响应中断）
+     * @param arg 令牌数
+     */
+    public void acquireShared(int arg) {
+        // 独占锁公平锁逻辑
+        //if (!tryAcquire(arg) && acquireQueue(addNode(Node.EXCLUSIVE), arg)) {
+        //1.快速尝试获取锁 2.获取锁失败（1.入队 2.自旋阻塞）
+        if(tryAcquireShared(arg) < 0){
+            doAcquireShared(arg);
+        }
+    }
+
+
+    /**
+     * 快速尝试获取锁
+     * @param permits 锁数量
+     * @return 剩余锁数量
+     */
+    protected int tryAcquireShared(int permits) {
+        //需要在子类重写
+        throw new UnsupportedOperationException("");
+    }
+
+    /**
+     * 共享锁，入队,自旋阻塞（响应中断）
+     * @param arg 令牌
+     */
+    private void doAcquireSharedInterruptibly(int arg) throws InterruptedException {
+        //入队
+        Node node = addNode(Node.SHARED);
+        boolean failed = true;
+        try {
+            while (true){
+                //1.尝试快速获取锁，前提是检查到前驱节点是不是头节点，是头节点才会去尝试快速获取锁
+                Node prevNode = node.prev;
+                if (prevNode == head){//是头节点才会去尝试快速获取锁
+                    int i = tryAcquireShared(arg);
+                    if ( i >=  0){//快速尝试获取锁成功
+//                        setHead(node); //TODO 这里不能用原来的方法
+                        setHeadAndPropagate(node,i);
+                        prevNode.next = null;
+                        failed = false;
+                        return;
+                    }
+                }
+
+                //先判断能不能阻塞，如果能那么进行阻塞
+                if (shouldParkAfterFailedAcquire(prevNode, node) && parkAndCheckInterrupt()){
+                    throw new InterruptedException();
+                }
+
+            }
+        }finally {
+            if (failed){
+                cancelAcquire(node);//取消就是把自己从队列摘除（这里是否真正的跨过了该节点）
+            }
+        }
+    }
+
+    /**
+     * 共享锁，入队,自旋阻塞(不响应中断,在方法内部补上中断位)
+     * @param arg 令牌
+     */
+    private void doAcquireShared(int arg){
+        //入队
+        Node node = addNode(Node.SHARED);
+        boolean failed = true;
+        try {
+            boolean interrupted = false;
+            while (true){
+                //1.尝试快速获取锁，前提是检查到前驱节点是不是头节点，是头节点才会去尝试快速获取锁
+                Node prevNode = node.prev;
+                if (prevNode == head){//是头节点才会去尝试快速获取锁
+                    int i = tryAcquireShared(arg);
+                    if (i >= 0){//快速尝试获取锁成功，继续往下执行，否则挂起
+//                        setHead(node); //TODO 这里不能用原来的方法
+                        setHeadAndPropagate(node, i);
+                        prevNode.next = null;
+                        if (interrupted){
+                            Thread.currentThread().interrupt();//补上中断位
+                        }
+                        failed = false;
+                        return;
+                    }
+                }
+
+                //先判断能不能阻塞，如果能那么进行阻塞
+                if (shouldParkAfterFailedAcquire(prevNode, node) && parkAndCheckInterrupt()){
+                    interrupted = true;
+                }
+
+            }
+        }finally {
+            if (failed){
+                cancelAcquire(node);//取消就是把自己从队列摘除（这里是否真正的跨过了该节点）
+            }
+        }
+    }
+
+    /**
+     * 设置新的头结点，根据释放还有多余的共享锁，决定是否要顺便去唤醒后继节点
+     * @param node 当前节点
+     * @param propagate 多余的共享锁
+     */
+    private void setHeadAndPropagate(Node node, int propagate) {
+        Node h = head;
+        setHead(node);//线程1 最后检查h == head 时，说明线程11 还没有执行到这一句
+        if (propagate > 0 || h == null || h.waitState < 0 ||//这里waitSet是一定不可能为-1的一定是-3状态，是在doReleaseShared修改的
+                (h = head) == null || h.waitState < 0){//这里的h 是在setHead中修改为了当前节点
+            doReleaseShared();//这里依然是多线程唤醒
+        }
+    }
+
+    /**
+     * 释放锁
+     * @param arg 令牌数
+     * @return 
+     */
+    public boolean releaseShared(int arg){
+        if (tryReleaseShared(arg)){
+            //唤醒，此处有可能是多线程的
+            doReleaseShared();
+            return true;
+        }
+        return  false;
+    }
+
+    /**
+     * 共享锁释放，次方法非常特殊，释放锁和获取锁都会调用该方法
+     */
+    private void doReleaseShared() {
+        for (;;){//共享锁可能多个线程一起释放，独占锁是单个线程释放。
+            Node h = head;
+            if (h != null && h != tail){//队列中是有节点的
+                int waitState = h.waitState;
+                if (waitState ==  Node.SINGLE){
+                    if (!compareAndSwapWaitState(h,Node.SINGLE, 0)){//cas失败，继续循环
+                        continue;
+                    }
+                    //cas修改成功  KK
+                    unparkSuccessor(h); // 线程1 执行该方法，这里会唤醒线程11，那么线程11 会去抢锁doAcquireShared中抢锁，抢到之后，会修改head指针指向自己
+                }else if (waitState == 0 && compareAndSwapWaitState(h, 0, Node.PROPAGATE)){ // ???
+                    continue;
+                }
+
+            }
+
+            //退出 PP
+            if (h == head){// 如果h已经不是头结点，那么继续循环，如果h还是头节点，那么退出循环，当线程11 被唤醒后修改了head指针为自己之后，那么h != head , 那么此时线程1会继续唤醒线程11后面的线程12
+                            // 如果线程11 被唤醒后，还没有修改head 指针，那么 h == head ,那么此时线程1释放锁就退出了，接着由线程11执行完之后去唤醒线程12
+                break;
+            }
+        }
+    }
+
+    protected boolean tryReleaseShared(int arg) {
+        //这里需要让公平锁和非公平锁来继承重写
+        throw new UnsupportedOperationException();
+    }
+    // endregion
+
 
     //region getter and setter
 
