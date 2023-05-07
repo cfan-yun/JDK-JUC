@@ -8,7 +8,9 @@ import java.util.concurrent.Semaphore;
 public class SemaphoreTest {
 
     public static void main(String[] args) {
-        Semaphore semaphore = new Semaphore(4);
+//        Semaphore semaphore = new Semaphore(4);   //4把共享锁
+//        MySemaphore semaphore = new MySemaphore(4); //4把共享锁 ,手写实现
+        MySemaphoreBySynchronized semaphore = new MySemaphoreBySynchronized(4); //4把共享锁
         for (int i = 0; i < 50; i++) {
             int finalI = i;
             new Thread(()->{

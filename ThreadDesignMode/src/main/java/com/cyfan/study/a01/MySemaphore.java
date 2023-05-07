@@ -16,6 +16,11 @@ public class MySemaphore {
                     break;
                 }
                 this.wait();
+
+                //唤醒之后继续判断是否有锁可拿，如果有，则继续唤醒后继节点
+                if (this.count > 0) {//这一段可有可无,aqs源码实现是两处唤醒,分叉执行
+                    this.notifyAll();
+                }
             }
         }
     }

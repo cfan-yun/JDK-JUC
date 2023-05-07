@@ -435,6 +435,8 @@ public class MyAbstractQueuedSynchronizer {
 
     /**
      * 快速尝试获取锁
+     *
+     * countDownLatch 和 semaphore的逻辑不一样
      * @param permits 锁数量
      * @return 剩余锁数量
      */
@@ -493,7 +495,7 @@ public class MyAbstractQueuedSynchronizer {
                 //1.尝试快速获取锁，前提是检查到前驱节点是不是头节点，是头节点才会去尝试快速获取锁
                 Node prevNode = node.prev;
                 if (prevNode == head){//是头节点才会去尝试快速获取锁
-                    int i = tryAcquireShared(arg);
+                    int i = tryAcquireShared(arg); // 这里countDownLatch 和 Semaphore 逻辑不一样
                     if (i >= 0){//快速尝试获取锁成功，继续往下执行，否则挂起
 //                        setHead(node); //TODO 这里不能用原来的方法
                         setHeadAndPropagate(node, i);
@@ -505,7 +507,6 @@ public class MyAbstractQueuedSynchronizer {
                         return;
                     }
                 }
-
                 //先判断能不能阻塞，如果能那么进行阻塞
                 if (shouldParkAfterFailedAcquire(prevNode, node) && parkAndCheckInterrupt()){
                     interrupted = true;
